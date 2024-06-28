@@ -4,7 +4,6 @@ attached 2 hdd 20GB
 
 $ lsblk
 $ yum clean all
-$ yum update -ymd0
 $ yum install mdadm -y
 $ mdadm --create --verbose /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc
 $ cat /proc/mdstat
