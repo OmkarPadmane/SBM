@@ -13,7 +13,7 @@ $ mdadm  --detail /dev/md0
 $ mkfs.ext4 /dev/md0
 $ mkdir /mnt/raid0
 $ mount /dev/md0 /mnt/raid0
-$ ls –la /mnt/raid0
+$ ls  /mnt/raid0
 $ mdadm --detail --scan  --verbose  
 $ df -h 
 
