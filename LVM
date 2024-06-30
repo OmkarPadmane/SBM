@@ -1,0 +1,24 @@
+vm 4bg ram 20gb hdd
+add 2 hdd of 20 gb
+
+$ lsblk
+$ pvcreate /dev/sdb /dev/sdc
+$ pvdisplay
+$ vgcreate hpcsa /dev/sdb /dev/sdc
+$ vgdisplay
+$ lvcreate -n hpcsa --size 1G hpcsa
+$ mkfs.ext4 /dev/mapper/hpcsa-hpcsa
+$ lvdisplay
+
+
+--to reduce the file size
+$ lvreduce -L -0.5G /dev/hpcsa/hpcsa
+$ mkfs.ext4 /dev/mapper/hpcsa-hpcsa
+$ lvdisplay
+
+--to extend the 
+$ lvextend -L +2G /dev/hpcsa/hpcsa
+$ mkfs.ext4 /dev/mapper/hpcsa-hpcsa
+$ lvdisplay
+
+
