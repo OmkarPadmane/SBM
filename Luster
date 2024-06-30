@@ -1,0 +1,133 @@
+
+****************************LUSTERFS LAB******************************
+
+
+------------------------------------------------------------------------------------------------------------------
+                                                           server
+-----------------------------------------------------------------------------------------------------------------
+cd /etc/yum.repos.d/ &&  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && systemctl stop firewalld && systemctl disable firewalld
+yum install -y nano
+dnf config-manager --set-enabled powertools
+dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+dnf install https://zfsonlinux.org/epel/zfs-release-2-3$(rpm --eval "%{dist}").noarch.rpm
+nano /etc/selinux/config
+dnf install kernel-headers kernel-devel
+dnf upgrade kernel
+reboot
+dnf install zfs
+modprobe -v zfs
+nano  /etc/yum.repos.d/lustre.repo
+[lustre-server]
+name=lustre-server
+baseurl=https://downloads.whamcloud.com/public/lustre/lustre-2.15.4/el8.9/server/
+exclude=*debuginfo*
+enabled=1
+gpgcheck=0
+dnf install -y lustre-dkms lustre-osd-zfs-mount lustre kmod-lustre
+modprobe -v lustre
+lsmod | grep lustre
+lsblk
+parted /dev/nvme0n2 mklabel gpt
+parted -a optimal /dev/nvme0n2mkpart primary 0% 100%
+zpool create mds_pool /dev/nvme0n3p1
+zfs create mds_pool/mdt0
+zfs set atime=off mds_pool/mdt0
+zpool list
+umount /mds_pool/mdt0
+umount /mds_pool
+mkfs.lustre --reformat --mdt --fsname=lustrefs --mgs --index=0 --backfstype=zfs mds_pool/mdt0
+mkdir /mnt/mdt0/
+mount -t lustre mds_pool/mdt0 /mnt/mdt0
+lctl dl
+lctl get_param -n health_check
+nano /etc/modprobe.d/lnet.conf
+#add-  options lnet networks="tcp0(ens33)"
+modprobe lnet
+lsmod | grep lnet
+lctl network up
+lctl ping <MGS-SERVER-IP>@tcp0
+
+
+lsblk
+parted /dev/nvme0n3 mklabel gpt
+parted -a optimal /dev/nvme0n3 mkpart primary 0% 100%
+zpool create ost_pool1 /dev/nvme0n3p1
+zfs create ost_pool1/ost0
+zfs set atime=off ost_pool1/ost0
+umount ost_pool1/ost0
+umount ost_pool1
+mkfs.lustre --ost --fsname=lustrefs --mgsnode=<MGS SERVER IP>@tcp --index=0 --backfstype=zfs ost_pool1/ost0
+mkdir -p /mnt/ost0
+mount -t lustre ost_pool1/ost0 /mnt/ost0
+lctl dl
+
+-----Optional extra OST Server-----
+
+cd /etc/yum.repos.d/ &&  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && systemctl stop firewalld && systemctl disable firewalld
+yum install -y nano
+dnf config-manager --set-enabled powertools
+dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+dnf install https://zfsonlinux.org/epel/zfs-release-2-3$(rpm --eval "%{dist}").noarch.rpm
+nano /etc/selinux/config
+dnf install kernel-headers kernel-devel
+dnf upgrade kernel
+reboot
+dnf install zfs
+modprobe -v zfs
+nano  /etc/yum.repos.d/lustre.repo
+[lustre-server]
+name=lustre-server
+baseurl=https://downloads.whamcloud.com/public/lustre/lustre-2.15.4/el8.9/server/
+exclude=*debuginfo*
+enabled=1
+gpgcheck=0
+dnf install -y lustre-dkms lustre-osd-zfs-mount lustre kmod-lustre
+modprobe -v lustre
+lsmod | grep lustre
+lsblk
+parted /dev/nvme0n2 mklabel gpt
+parted -a optimal /dev/nvme0n2 mkpart primary 0% 100%
+zpool create ost_pool1 /dev/nvme0n2p1
+zfs create ost_pool1/ost1
+zfs set atime=off ost_pool1/ost1
+umount ost_pool1/ost1
+umount ost_pool1
+mkfs.lustre --ost --fsname=lustrefs --mgsnode=<MGS SERVER IP>@tcp --index=1 --backfstype=zfs ost_pool1/ost0
+mkdir -p /mnt/ost0
+mount -t lustre ost_pool1/ost0 /mnt/ost0
+----------------------
+
+
+------------------------------------------------------------------------------------
+                                               Client
+-------------------------------------------------------------------------------------
+
+cd /etc/yum.repos.d/ &&  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && systemctl stop firewalld && systemctl disable firewalld
+yum install -y nano
+dnf config-manager --set-enabled powertools
+dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+nano /etc/selinux/config
+dnf install kernel-headers kernel-devel
+dnf upgrade kernel
+reboot
+nano  /etc/yum.repos.d/lustre.repo
+[lustre-client]
+name=lustre-client
+baseurl=https://downloads.whamcloud.com/public/lustre/lustre-2.15.4/el8.9/client/
+exclude=*debuginfo*
+enabled=1
+gpgcheck=0
+dnf install -y lustre-client lustre-client-dkms kmod-lustre-client
+modprobe lustre
+nano /etc/modprobe.d/lnet.conf
+#add-  options lnet networks="tcp0(ens33)"
+modprobe lnet
+lsmod | grep lnet
+lctl network up
+lctl ping <MGS-SERVER>@tcp0
+lsmod | grep lustre
+mkdir /mnt/lustre
+mount -t lustre <MGS-SERVER>@tcp0:/lustrefs /mnt/lustre 
+lctl dl
+lfs check servers
+lfs osts
