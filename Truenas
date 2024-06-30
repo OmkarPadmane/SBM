@@ -38,4 +38,4 @@ then in iscsi portal : discvery : discover portal : put ip of vm
 target : select target : connect : ok
 
 then search disk manager : GPT : ok
-see the disk wil be added.
+see the disk will be added.
