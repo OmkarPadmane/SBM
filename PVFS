@@ -1,0 +1,104 @@
+******************PVFS LAB**************************
+
+------------------------------------------------------------------------
+                                 Server
+------------------------------------------------------------------------
+cd /etc/yum.repos.d/ &&  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && systemctl stop firewalld && systemctl disable firewalld
+yum install -y nano
+yum -y install epel-release
+nano /etc/selinux/config 
+#disable it
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+
+echo "[elrepo]
+name=ELRepo.org Community Enterprise Linux Repository - el8
+baseurl=http://elrepo.org/linux/elrepo/el8/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+
+[elrepo-kernel]
+name=ELRepo.org Community Enterprise Linux Kernel Repository - el8
+baseurl=http://elrepo.org/linux/kernel/el8/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org" | sudo tee /etc/yum.repos.d/elrepo.repo
+
+yum -y --enablerepo=elrepo-kernel install kernel-ml
+reboot
+yum -y install orangefs orangefs-server
+mkdir /mnt/ofsmnt
+lsblk
+pvfs2-genconfig /etc/orangefs/orangefs.conf
+ 
+format and mount new hdd to desired location
+
+* Enter protocol type [Default is tcp]:
+
+* Enter port number [Default is 3334]:
+
+* Enter directory name: [Default is /var/lib/orangefs/data]: /mnt/ofsmnt
+
+* Enter directory name: [Default is /var/lib/orangefs/meta]:
+
+* Enter hostnames [Default is localhost]: ofs-srv-1
+
+* Enter yes or no [Default is yes]: y
+
+* Enter hostnames [Default is localhost]: ofs-srv-1
+
+* Would you like to verify server list (y/n) [Default is n]? y
+
+****** I/O servers:
+ofs-srv-1
+
+****** Metadata servers:
+ofs-srv-1
+
+* Does this look ok (y/n) [Default is y]? y
+
+Writing fs config file... done
+
+pvfs2-server -f /etc/orangefs/orangefs.conf
+
+
+
+nano /etc/pvfs2tab
+tcp://ofs-srv-1:3334/orangefs /mnt/ofsmnt pvfs2
+systemctl enable orangefs-server  && systemctl start orangefs-server && systemctl status orangefs-server
+pvfs2-ping -m /mnt/ofsmnt
+
+
+---------------------------------------------------
+                     Client
+---------------------------------------------------
+cd /etc/yum.repos.d/ &&  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && systemctl stop firewalld && systemctl disable firewalld
+yum install -y nano
+yum -y install epel-release
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+
+echo "[elrepo]
+name=ELRepo.org Community Enterprise Linux Repository - el8
+baseurl=http://elrepo.org/linux/elrepo/el8/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+
+[elrepo-kernel]
+name=ELRepo.org Community Enterprise Linux Kernel Repository - el8
+baseurl=http://elrepo.org/linux/kernel/el8/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org" | sudo tee /etc/yum.repos.d/elrepo.repo
+
+yum -y --enablerepo=elrepo-kernel install kernel-ml
+reboot
+yum -y install orangefs
+modprobe orangefs
+mkdir /mnt/ofsmnt
+nano /etc/pvfs2tab
+tcp://ofs-srv-1:3334/orangefs /mnt/ofsmnt pvfs2
+pvfs2-ping -m /mnt/ofsmnt
+systemctl enable orangefs-client && systemctl start orangefs-client && systemctl status orangefs-client
+
+mount -t pvfs2 tcp://ofs-srv-1:3334/orangefs /mnt/ofsmnt
